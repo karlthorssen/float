@@ -15,7 +15,7 @@
             [overtone.inst.sampled-piano :refer [sampled-piano]]
             [overtone.inst.sampled-flute :refer [sampled-non-vibrato-flute]]
             [float.inst.trumpet :refer [sampled-trumpet]]
-            [float.inst :refer [organ bass sing wobble-organ supersaw
+            [float.inst :refer [organ bass sing wobble-organ supersaw my-piano
                                  dub2 reese string bass2 organ2 plucky]]
             [overtone.core :refer :all :exclude [tap]]
             [float.keys :as player]))
@@ -133,11 +133,17 @@
 
 (defmethod lz/play-note :piano2 [{:keys [pitch duration]}]
   (when pitch
-    (piano/piano pitch :vel 60 :hard 0.2 :muffle 0.2 :velcurve 0.3)))
+    (play-gated duration
+     (my-piano pitch :vel 60 :hard 0.2 :muffle 0.2 :velcurve 0.3))))
 
 (defmethod lz/play-note :piano3 [{:keys [pitch duration]}]
   (when pitch
     (piano/piano pitch :vel 60 :velcurve 0.1 :decay 0.2)))
+
+(piano/piano :vel 60 :velcurve 0.1 :decay 0.2)
+(piano/piano :vel 70)
+(play-gated 0.5
+ (my-piano :vel 60 :hard 0.5 :muffle 0.2 :velcurve 0.3 :decay 0.2 :sustain 0))
 
 (defmethod lz/play-note :reese [{:keys [pitch duration]}]
   (when pitch
@@ -155,7 +161,7 @@
   (when pitch
    (play-gated duration
                #_(sampled-trumpet pitch :start-pos 0.25 :attack 0.01 :level (* amp 1.3))
-               (sampled-trumpet pitch :attack 0.0 :level (* amp 1.3)))))
+               (sampled-trumpet pitch :attack 0.0 :level amp))))
 
 (defmethod lz/play-note :rest [_] nil)
 
@@ -209,30 +215,29 @@
                 (all :part :beat)
                 (times 2)))
 
-(def build-drum (->>
-                 (reduce with
-                         [(tap :kick2 [0 1.5 4 5] 8)
-                          (tap :hat (range 8) 8)
-                          (tap :hat2 [0.505 2.495 4.505 5.5] 8)])
-                 (all :part :beat)
-
-                 (times 2)))
-
 #_(->> base-drum (times 3) (tempo (bpm 120)) lz/play)
 
 (def track (atom nil))
 (do
   (reset! track
-          (let [chords1 (inst-phrase :piano
-                                     (take 8 (interleave (repeat 3.5) (repeat 0.5)))
-                                     (map chords [:v nil :iv7 nil :vi7 nil :i nil]))
-                chords2 (inst-phrase :piano [1 1] [{:i -3 :iii -0.5 :v 1} (-> chord/triad (chord/root 0))])]
-
-
+          (let [chords1 (inst-phrase :piano2
+                                     (take 8 (interleave (repeat 3.9) (repeat 0.1)))
+                                     (map chords [:VM nil :iv7 nil :vi7 nil :i nil]))
+                melody1 (inst-phrase :piano2
+                                     (concat (repeat 12 qtr) [eth eth eth hf eth
+                                                              qtr eth hf eth
+                                                              qtr (+ qtr eth) (- hf eth)
+                                                              4
+                                                              eth eth eth hf eth])
+                                     (concat (repeat 12 nil) [0   0   -1   0 nil
+                                                              1   1   4  nil
+                                                              3 3 nil
+                                                              nil
+                                                              0   0   -1   0 nil]))
+                intro (inst-phrase :trumpet [qtr qtr qtr qtr] [-0.5 1 1 1])]
             (->>
-             (times 2 chords1)
-             (with melody1)
-             (with (times 4 base-drum))
+             intro
+             (then (with melody1 (times 2 chords1) (times 4 base-drum)))
              (tempo (bpm 120)))))
   (time @(lz/play @track)))
 
@@ -255,7 +260,7 @@
 
   (player/play-inst (fn [{:keys [pitch] :as note}]
                       (when pitch
-                        (sampled-trumpet (-> pitch chosen-scale))))
+                        (my-piano (-> pitch chosen-scale scale/lower))))
                     (fn [active]
                       (when (#{:live :loading} @(:status active))
                         (ctl active :gate 0)
@@ -288,7 +293,7 @@
   (kill synth/bubbles)
 
   (play-gated 0.2
-   (sampled-piano ))
+   (my-piano ))
 
   (let [playing (sampled-piano 72)]
       (at (+ (now) 200)
