@@ -18,7 +18,7 @@
             [float.inst :refer [organ bass sing wobble-organ supersaw my-piano
                                  dub2 reese string bass2 organ2 plucky]]
             [overtone.core :refer :all :exclude [tap]]
-            [float.keys :as player]))
+            [float.play-inst :as player]))
 
 (defmacro play-gated [duration & body]
   `(let [duration-ms# (* 1000 ~duration)
@@ -140,28 +140,21 @@
   (when pitch
     (piano/piano pitch :vel 60 :velcurve 0.1 :decay 0.2)))
 
-(piano/piano :vel 60 :velcurve 0.1 :decay 0.2)
-(piano/piano :vel 70)
-(play-gated 0.5
- (my-piano :vel 60 :hard 0.5 :muffle 0.2 :velcurve 0.3 :decay 0.2 :sustain 0))
-
 (defmethod lz/play-note :reese [{:keys [pitch duration]}]
   (when pitch
    (reese :freq (temperament/equal pitch)
           :amp 0.12
           :dur duration)))
 
-(defmethod lz/play-note :supersaw [{:keys [pitch duration amp] :as note}]
+(defmethod lz/play-note :supersaw [{:keys [pitch duration amp] :or {amp 1} :as note}]
   (when pitch
-    (supersaw :freq (temperament/equal pitch)
-              :amp (or amp 0.5)
-              :dur duration)))
+    (supersaw (temperament/equal pitch) :amp (* amp 0.5) :dur (- duration 0.05) :release 0.1)))
 
 (defmethod lz/play-note :trumpet [{:keys [pitch duration amp] :or {amp 1}}]
   (when pitch
    (play-gated duration
                #_(sampled-trumpet pitch :start-pos 0.25 :attack 0.01 :level (* amp 1.3))
-               (sampled-trumpet pitch :attack 0.0 :level amp))))
+               (sampled-trumpet pitch :attack 0.0 :level (* 0.3 amp)))))
 
 (defmethod lz/play-note :rest [_] nil)
 
@@ -215,31 +208,96 @@
                 (all :part :beat)
                 (times 2)))
 
+(def bass-note #(- % 14))
+(def chords1 (inst-phrase :piano2
+                          (take 16 (interleave (repeat 3.9) (repeat 0.1)))
+                          (map chords [:VM nil :VM nil
+                                       :iv7 nil :iv7 nil
+                                       :vi7 nil :vi7 nil
+                                       :i nil :i nil])))
+(def bass1 (inst-phrase :reese
+                        [2  1 1 4 1 1 2 4]
+                        (concat (map bass-note [-3 -0.5 -3]) [nil] (map bass-note [-2 0 -2 0]))))
+
+(def melody1 (inst-phrase :trumpet
+                         [4 (- eth 0.1) (+ 0.1 sth) eth qtr qtr (* 3 sth)
+                          8
+                          qtr qtr eth eth eth eth 4
+                          qtr qtr eth eth eth eth eth eth eth 5/2]
+                         [nil -3  nil  -3  1   -3 nil
+                          nil
+                          -2 0 -2 -2 -3 -3 nil
+                          -3 0 2 2 0 0 0 0 2 0 nil]))
+
+(def intro (with
+            (inst-phrase :piano2
+                         [qtr 3
+                          eth eth 3
+                          eth eth 3
+                          eth eth 3]
+                         [4 6.5 5 4 3 5 4 3 4 2 0])
+            (inst-phrase :piano2
+                         (take 8 (interleave (repeat 3.9) (repeat 0.1)))
+                         (map chords [:VM nil :iv7 nil :vi7 nil :i nil]))))
+
+(def melody1-saw (let [rhythm (concat (repeat 8 eth) [3.5 0.5]
+                                      (repeat 16 eth)
+                                      (repeat 16 eth)
+                                      (repeat 16 eth))]
+                   (with
+                    (inst-phrase :supersaw
+                                 rhythm
+                                 [-3 nil -3 nil -3 nil -3 nil -3 nil
+                                  -4 nil -4 nil -4 nil -4 nil -4 nil -4 nil -4 nil -4 nil
+                                  -2 nil -2 nil -2 nil -2 nil -2 nil -2 nil -2 nil -2 nil
+                                  0 nil 0 nil 0 nil 0 nil   0 0 0 0 -1 -1 0 0])
+                    (inst-phrase :supersaw
+                                 rhythm
+                                 [1 nil 1 nil 1 nil 1 nil 1 nil
+                                  0 nil 0 nil 0 nil 0 nil 0 nil 0 nil 0 nil 0 nil
+                                  0 nil 0 nil 0 nil 0 nil 0 nil 0 nil 0 nil 0 nil
+                                  2 nil 2 nil 2 nil 2 nil nil nil 2 2 2 2 2 2]))))
+
+(def slow-bass (->> bass1
+                    (where :duration (partial * 2))
+                    (where :time (partial * 2))))
+
 #_(->> base-drum (times 3) (tempo (bpm 120)) lz/play)
 
 (def track (atom nil))
-(do
+(do ;; TODO slow chords and bass
   (reset! track
-          (let [chords1 (inst-phrase :piano2
-                                     (take 8 (interleave (repeat 3.9) (repeat 0.1)))
-                                     (map chords [:VM nil :iv7 nil :vi7 nil :i nil]))
-                melody1 (inst-phrase :piano2
-                                     (concat (repeat 12 qtr) [eth eth eth hf eth
-                                                              qtr eth hf eth
-                                                              qtr (+ qtr eth) (- hf eth)
-                                                              4
-                                                              eth eth eth hf eth])
-                                     (concat (repeat 12 nil) [0   0   -1   0 nil
-                                                              1   1   4  nil
-                                                              3 3 nil
-                                                              nil
-                                                              0   0   -1   0 nil]))
-                intro (inst-phrase :trumpet [qtr qtr qtr qtr] [-0.5 1 1 1])]
-            (->>
-             intro
-             (then (with melody1 (times 2 chords1) (times 4 base-drum)))
-             (tempo (bpm 120)))))
+          (->> intro
+               (then
+                (->> base-drum
+                     (times 4)
+                     (with chords1 slow-bass melody1)
+                     (times 2)))
+               (then
+                (->> base-drum
+                    (times 4)
+                    (with slow-bass)
+                    (with melody1-saw)))
+               (tempo (bpm 120))))
   (time @(lz/play @track)))
+
+(reset!  track
+         (->> base-drum
+              (times 4)
+              (with chords1 slow-bass)
+              (with (inst-phrase :trumpet
+                                 [4 (- eth 0.1) (+ 0.1 sth) eth qtr qtr (* 3 sth)
+                                  8
+                                  qtr qtr eth eth eth eth 4
+                                  qtr qtr eth eth eth eth eth eth eth 5/2]
+                                 [nil -3  nil  -3  1   -3 nil
+                                  nil
+                                  -2 0 -2 -2 -3 -3 nil
+                                  -3 0 2 2 0 0 0 0 2 0 nil]))
+              (tempo (bpm 120))))
+
+
+; (->> base-drum (tempo (bpm 120)) lz/play)
 
 (comment
   ;; i  ii iii iv v  vi vii
@@ -250,21 +308,14 @@
   (lz/play @track)
   (lz/stop)
 
-  (player/play-inst (fn [note]
-                      (when (:pitch note)
-                        (-> note
-                            (assoc :part :plucky)
-                            (update :pitch chosen-scale)
-                            (assoc :duration 0.25)
-                            lz/play-note))))
+  (player/play-reese chosen-scale)
+  (player/play-piano2 chosen-scale)
+  (player/play-trumpet chosen-scale)
+  (player/play-supersaw chosen-scale)
 
-  (player/play-inst (fn [{:keys [pitch] :as note}]
-                      (when pitch
-                        (my-piano (-> pitch chosen-scale scale/lower))))
-                    (fn [active]
-                      (when (#{:live :loading} @(:status active))
-                        (ctl active :gate 0)
-                        nil)))
+  (play-gated 0.5 (supersaw :dur 4 :release 0.2))
+  (supersaw :dur 4)
+
 
   (do
     (recording-start "/Users/jonathan/src/music/float/song2.wav")
@@ -275,30 +326,13 @@
 
   (let [b (piano/piano 60 :dur 10)]
     (at (+ (now) 200)
-        (ctl (:id b) :gate 0))
+        (kill b))
     nil)
-
-  (let [bass (synth/daf-bass :freq 220 :amp 0.2)
-        bass2 (synth/daf-bass :freq 330 :amp 0.2)]
-      (at (+ (now) 200)
-          (ctl bass :gate 0))
-      (at (+ (now) 800)
-          (ctl bass2 :gate 0))
-      nil)
-  (kill synth/daf-bass)
-
 
   (synth/ks1 :coef 0.8 :decay 20)
   (synth/bubbles)
   (kill synth/bubbles)
 
-  (play-gated 0.2
-   (my-piano ))
-
-  (let [playing (sampled-piano 72)]
-      (at (+ (now) 200)
-          (ctl playing :gate 0))
-      nil)
 
   (play-gated 0.2 (sampled-trumpet 60 :attack 0.01 :decay 0.29  :level 10 :sustain 0.1 :start-pos 500))
   (play-gated 1 (sampled-trumpet 60))
