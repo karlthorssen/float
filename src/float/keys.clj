@@ -60,14 +60,15 @@ ie when given a code not a char, it just send the keycode through"
 (defn play-inst [player-fn & [keyup]]
   (listen-keys (fn [keycode]
                  (let [pitch (-> keycode keycode->char pitch-map)]
-                   (swap! keys-active
-                          update keycode (fn [current]
-                                           (if current
-                                             current
-                                             (player-fn {:pitch pitch :duration 1}))))))
+                   (when pitch
+                     (swap! keys-active
+                            update keycode (fn [current]
+                                             (if current
+                                               current
+                                               (player-fn {:pitch pitch :duration 1})))))))
                (fn [keycode]
                  (if keyup
-                   (swap! keys-active update keycode keyup)
+                   (swap! keys-active update keycode #(when % (keyup %)))
                    (swap! keys-active assoc keycode nil)))))
 
 (reset! keys-active {})

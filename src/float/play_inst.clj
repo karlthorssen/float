@@ -2,7 +2,7 @@
   (:require [float.keys :as player]
             [overtone.inst.sampled-piano :refer [sampled-piano]]
             [float.inst :as inst]
-            [float.inst.trumpet :refer [sampled-trumpet]]
+            [overtone.inst.trumpet :refer [sampled-trumpet]]
             [leipzig.scale :as scale]
             [leipzig.temperament :as temperament]
             [overtone.core :refer [ctl]]))
@@ -54,7 +54,6 @@
                      (when pitch
                        (inst/supersaw (-> pitch chosen-scale temperament/equal) :amp 0.5 :dur 4 :release 0.1)))
                    (fn [active]
-                     (prn active)
                      (when (#{:live :loading} @(:status active))
                        (ctl active :gate 0)
                        nil))))

@@ -7,6 +7,7 @@
 
 (comment
   (require '[overtone.live :refer :all])
+  (synth/ks1)
 
   )
 
@@ -124,7 +125,7 @@
                   (for [d voices] (-> (* freq 2) (* (+ 1 d)) saw
                                       (delay-c 0.005 (ranged-rand 0.0001 0.01)))))
         noiz (pink-noise)
-        snd (+ (* 0.85 freqs) (* 0.5 hi-freqs) (* 0.1 noiz))]
+        snd (+ (* 0.85 freqs) (* 0.5 hi-freqs) (* 0.05 noiz))]
     (-> snd
         (clip2 0.45)
         (* (env-gen (adsr att decay sus rel 1) (line:kr 1 0 dur) :action FREE))
@@ -197,10 +198,11 @@
 
 (definst plucky [freq 440 dur 1 amp 1 cutoff 1500 fil-dur 0.1]
   (let [env (env-gen (asr 0 1 1) (line:kr 1.0 0.0 dur) :action FREE)
-        level (+ (* 0.85 freq) (env-gen (perc 0 fil-dur) :level-scale cutoff))]
+        level (+ (* 0.75 freq) (env-gen (perc 0 fil-dur) :level-scale cutoff))
+        noise (lpf (* 0.5 (white-noise)) freq)]
     (-> (pulse freq)
         (lpf level)
-        (free-verb :room 1 :damp 0.45)
+        (free-verb :room 1 :damp 0.5)
         (* env amp))))
 
 (definst my-piano [note 60
@@ -217,7 +219,8 @@
                    tune 0.5
                    random 0.1
                    stretch 0.1
-                   sustain 0.1]
+                   sustain 0.1
+                   amp 1]
   (let [snd (mda-piano {:freq (midicps note)
                         :gate gate
                         :vel vel
@@ -233,8 +236,4 @@
                         :random random
                         :stretch stretch
                         :sustain sustain})]
-    (* snd (env-gen:kr (adsr 0 0 1 0.1 1) gate :action FREE))))
-
-(comment
-
-  )
+    (* snd amp (env-gen:kr (adsr 0 0 1 0.1 1) gate :action FREE))))

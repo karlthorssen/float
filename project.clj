@@ -27,13 +27,14 @@
     "-XX:+PrintGCTimeStamps"]})         ;  - and timestamps
 
 
-(defproject hungry "0.1.0-SNAPSHOT"
+(defproject float "0.1.0-SNAPSHOT"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [overtone "0.10.6"]
+                 [overtone-trumpet "0.1.0"]
                  [leipzig "0.10.0"]
                  [seesaw "1.5.0"]]
   :jvm-opts ^:replace ["-Xms512m" "-Xmx1g"                 ; Minimum and maximum sizes of the heap
@@ -44,5 +45,4 @@
                        "-XX:+UseTLAB"                      ; Uses thread-local object allocation blocks. This
                                                            ;  improves concurrency by reducing contention on
                                                            ;  the shared heap lock.
-                       "-XX:MaxTenuringThreshold=0"]
-  :repl-options {:init-ns hungry.core})
+                       "-XX:MaxTenuringThreshold=0"])
