@@ -14,7 +14,7 @@
             [overtone.inst.drum :as drum]
             [overtone.inst.sampled-piano :refer [sampled-piano]]
             [overtone.inst.sampled-flute :refer [sampled-non-vibrato-flute]]
-            [float.inst.trumpet :refer [sampled-trumpet]]
+            [overtone.inst.trumpet :refer [sampled-trumpet]]
             [float.inst :refer [organ bass sing wobble-organ supersaw my-piano
                                  dub2 reese string bass2 organ2 plucky brass]]
             [overtone.core :refer :all :exclude [tap]]
@@ -37,7 +37,7 @@
    (play-buf 2 vocal-buffer :action FREE)
    :pitch-ratio ratio
    :time-dispersion 0.01))
-(vocal )
+;; (vocal :ratio 4/5)
 
 (def chosen-scale (comp scale/F scale/minor))
 
